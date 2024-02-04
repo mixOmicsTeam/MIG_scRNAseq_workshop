@@ -59,11 +59,11 @@ options(width=80)
 Seurat is an R package designed for QC, analysis, and exploration of single-cell 
 RNA-seq data. Seurat aims to enable users to identify and interpret sources of 
 heterogeneity from single-cell transcriptomic measurements, and to integrate 
-types of single-cell data. After this short introduction you can 
+types of single-cell data. After this short introduction workshop you can 
 read [Seurat offical website](https://satijalab.org/seurat/) to dive a
 bit deeper.
 
-SeuratData is a mechanism for distributing datasets in the form of Seurat 
+`SeuratData` is a mechanism for distributing datasets in the form of Seurat 
 objects using R's internal package and data management systems. 
 It represents an easy way for users to get access to datasets 
 that are used in the Seurat vignettes.
@@ -83,10 +83,10 @@ remotes::install_github("satijalab/seurat-data", quiet = TRUE)
 
 # 1. Load Seurat and SeuratData
 
-We will use Seurat V5 today, it was published last year. Seurat V5 has gradually 
+We will use Seurat V5, which was published last year. Seurat V5 has gradually 
 gained popularity due to its faster running speed. However, Seurat V5 has some 
-data structure changes compared with older versions of Seurat (V3 & V4), 
-which may cause some old codes to fail to run. To know more please read this [website](https://satijalab.org/seurat/articles/announcements.html).
+data structure changes compared with older versions (V3 & V4), 
+which may cause some old codes to fail to run. More details can be found on this [website](https://satijalab.org/seurat/articles/announcements.html).
 
 ```{r, eval = TRUE, message=FALSE}
 library(Seurat)
@@ -94,9 +94,10 @@ options(Seurat.object.assay.version = "v5")
 library(SeuratData)
 ```
 
-We will use pbmcsca dataset today. This public dataset includes single-cell RNA-seq
+## Load the data
+We will use the `pbmcsca` dataset. This public dataset includes single-cell RNA-seq
 data of human peripheral blood mononuclear cells (PBMCs) using multiple sequencing platforms.
-Only data that *passed quality control* are included in the pbmcsca dataset.
+Only data that *passed quality control* are included in the `pbmcsca` dataset.
 
 ```{r, eval = TRUE, message=FALSE}
 data("pbmcsca")
@@ -107,12 +108,14 @@ pbmcsca <- UpdateSeuratObject(pbmcsca)
 table(pbmcsca$Method)
 ```
 
-We will use two scRNA-seq sequencing results (10x Chromium (v2) & 10x Chromium (v3)) 
-from pbmcsca data set today. They sequenced peripheral blood mononuclear cells 
-from two patients using different versions of the sequencing platform, as is common in practice.
-The raw count matrix and the information of each gene and each cell are saved in Seurat object
-'pbmc_10x_v2' and 'pbmc_10x_v3' independently. In addition, we combined the two sequencing 
-results without any processing and stored them in the Seurat object ‘pbmc_combo’.
+The table indicates the number of cells sequenced using different platforms.
+
+Today we will consider two scRNA-seq sequencing results (10x Chromium (v2) & 10x Chromium (v3)). PBMCs were sequnced from two patients using different versions of the sequencing platform.
+
+## Extract raw counts
+The raw count matrix and the information of each gene and each cell are saved in a Seurat object
+`pbmc_10x_v2` and `pbmc_10x_v3` independently. In addition, we combine the two sequencing 
+results without any processing and store them in the Seurat object `pbmc_combo`:
 
 ```{r, eval = TRUE}
 pbmc_10x_v2 <- pbmcsca[,pbmcsca$Method == "10x Chromium (v2)"]
@@ -120,96 +123,109 @@ pbmc_10x_v3 <- pbmcsca[,pbmcsca$Method == "10x Chromium (v3)"]
 pbmc_combo <- pbmcsca[,pbmcsca$Method %in% c("10x Chromium (v2)", "10x Chromium (v3)")]
 ```
 
-# 2. Analysis single-cell RNA-seq data from one experiment
+# 2. Analysis of single-cell RNA-seq data from a single experiment
 
-Let's start with a simple case. We only care about the results from experiment 
-using the 10x Chromium (v3) platform, that is, we only perform data analysis 
-on Seurat object 'pbmc_10x_v3'.
+Let's start with a simple case: the data generated using the the 10x Chromium (v3) platform (i.e the Seurat object `pbmc_10x_v3`.
 
-Let's first take a look at how many cells and genes passed QC.
+Let's first take a look at how many cells and genes passed Quality Control (QC).
 
-*In count matrix of a Seurat object, the rows represent genes and the columns represent cells.*
-
-*A count matrix with 20000 rows and 10000 columns means there are 10000 cells with 20000 genes in this Seurat object*
+<p>
+<div class="info">
+**ⓘ Count matrix in Seurat*  
+A count matrix from a Seurat object displays the genes in rows and the cells in columns. 
+</div>
+</p>
 
 ```{r, eval = TRUE}
 dim(pbmc_10x_v3)
 ```
 
-3222 cells with 33694 genes pass QC.
+Here we have 3222 cells with 33694 genes that passed QC.
 
-## 2.1 Normalization
+## Normalization
 
-We can use Seurat function NormalizeData() to normalize raw counts.
-By default, Seurat implements a global-scaling normalization method “LogNormalize” 
+We use the Seurat function `NormalizeData()` to normalize raw counts.
+By default, Seurat implements a global-scaling normalization method called `LogNormalize` 
 that normalizes the gene expression measurements for each cell by the total 
-expression, multiplies this by a scale factor (10,000 by default), 
-and log-transforms the result.
+number of counts accross all genes, and multiplies this by a scaling factor (10,000 by default), 
+then log transforms the result:
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- NormalizeData(object=pbmc_10x_v3, normalization.method = "LogNormalize", 
     scale.factor = 10000)
 ```
 
-## 2.2 Feature Selection
+## Feature Selection
 
-We can use Seurat function FindVariableFeatures() to select highly variable genes 
-which have most of useful information for downstream analysis. In this example, 
-we only select top 3,000 most variable genes to save more computing time of downstream analysis.
+We use the Seurat function `FindVariableFeatures()` to select highly variable genes 
+which have most of useful information for downstream analysis. 
+
+Here we select the top 3,000 most variable genes to save some computing time.
 In practice, you can select more genes  (5,000 or more) to preserve more 
-information of your scRNA-seq experiment.
+information from the scRNA-seq experiment:
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- FindVariableFeatures(pbmc_10x_v3, selection.method = "vst", nfeatures = 3000)
 ```
 
-## 2.3 Scaling
+## Scaling
 
-The single cell dataset likely contains ‘uninteresting’ sources of variation. This could include not only technical noise, but batch effects, or even biological sources of variation (cell cycle stage). As suggested in Buettner et al, NBT, 2015, regressing these signals out of the analysis can improve downstream dimensionality reduction and clustering. To mitigate the effect of these signals, Seurat constructs linear models to predict gene expression based on user-defined variables. The scaled z-scored residuals of these models are stored in the scale.data slot, and are used for dimensionality reduction and clustering.
+The single cell dataset likely may contain ‘uninteresting’ sources of variation, for example technical noise, batch effects, or even biological sources of variation (cell cycle stage). As suggested by [Buettner et al, 2015](), regressing these signals out of the analysis can improve downstream dimensionality reduction and clustering. 
 
-We can use Seurat function ScaleData() to get the matrix after scaling.
+Seurat constructs linear models to predict gene expression based on user-defined variables. The scaled z-scored residuals of these models are stored in the `scale.data` slot, and are used for dimensionality reduction and clustering.
+
+We use the Seurat function `ScaleData()` to obtain the scaled matrix:
 
 ```{r, eval = TRUE}
 pbmc_10x_v3.all.genes <- rownames(pbmc_10x_v3)
 pbmc_10x_v3 <- ScaleData(pbmc_10x_v3, features = pbmc_10x_v3.all.genes)
 ```
 
-## 2.4 Principal component analysis (PCA)
+## Principal component analysis (PCA)
 
-We perform PCA on the scaled data. By default, the genes in pbmc_10x_v3@var.genes are used as input, but can be defined using pc.genes. We have typically found that running dimensionality reduction on highly variable genes can improve performance. However, with UMI data – particularly after regressing out technical variables, we often see that PCA returns similar (albeit slower) results when run on much larger subsets of genes, including the whole transcriptome.
+We perform PCA on the scaled data. By default, the genes in `pbmc_10x_v3@var.genes` are used as input, but they can be defined by specifying the argument `pc.genes`. 
 
-We run PCA on top 3,000 most variable genes (from section 2.2).
+We have found that running dimensionality reduction on highly variable genes can improve performance. However, with UMI data – particularly after regressing out technical variables, we often see that PCA returns similar (albeit slower) results when run on much larger subsets of genes, including the whole transcriptome.
+
+We run PCA on top 3,000 most variable genes: 
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- RunPCA(pbmc_10x_v3, features = VariableFeatures(object = pbmc_10x_v3))
 ```
 
+<p>
+<div class="info">
+**ⓘ  Choosing parameters in PCA (genes and pcs)*  
 How many genes to choose for PCA and how many PCs to use for downstream analysis 
-is a complex and important issue. This is out of the scope of today's workshop. 
-But we highly recomand you to read this [document](https://learn.gencore.bio.nyu.edu/single-cell-rnaseq/seurat-part-3-data-normalization/)
-before analyzing your own scRNA-seq data. In this document, they show you how to
-use some visuliztion methods to help you select most suitable number of genes for
-PCA and number of PCs for downstream anlysis.
+is a complex and important issue that is out of the scope of today's workshop. 
 
-## 2.5 2D Visulization
+But we highly recommend you to read this [document](https://learn.gencore.bio.nyu.edu/single-cell-rnaseq/seurat-part-3-data-normalization/)
+before analyzing your own scRNA-seq dat, where the authors show how to
+use some visualization methods to guide your choice.
+</div>
+</p>
 
-### 2.5.1 Visulization by using t-distributed stochastic neighbour embedding (t-SNE)
 
-We should run t-SNE algorithm first. It is calculated by using PCs, we use top 30
-PCs in this example case.
+
+## 2D Visualization
+
+### Using t-distributed stochastic neighbour embedding (t-SNE)
+
+We run the t-SNE algorithm first. It is calculated based on PCs, we use top 30
+PCs in this example:
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- RunTSNE(pbmc_10x_v3, dims = 1:30)
 ```
 
-Then, we can draw t-SNE plot by using Dimplot() function by chosing reduction = 'tsne'
+We can then draw a t-SNE plot by using the `Dimplot()` function by specifying the argument  `reduction = 'tsne'`:
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "tsne", label = TRUE)
 ```
 
-We can colour points by using other information by using 'group.by' property. 
-For example, we can use sequencing platform.
+We can colour points (cells) by using other information by specyfing the argument `group.by`. 
+For example, to display the sequencing platform:
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "tsne", label = TRUE, group.by = 'Method')
@@ -232,16 +248,24 @@ pbmc_10x_v3 <- RunTSNE(pbmc_10x_v3, dims = 1:50)
 DimPlot(pbmc_10x_v3, reduction = "tsne", label = TRUE, group.by = 'Experiment')
 ```
 
-### 2.5.2 Visulization by using Uniform manifold approximation and project (UMAP)
 
-We also need to run UMAP algorithm first. It is also calculated by using PCs, we use top 30
-PCs in this example case.
+<p>
+<div class="info">
+**ⓘ  Interpreting t-SNAE results *
+As presented earlier, t-SNE interpretation must be taken with caution [....]. Nowadays using UMAP visulization is more appropriate.
+</div>
+</p>
+
+
+### Using Uniform manifold approximation and project (UMAP)
+
+UMAP is shown based on the PCs. Here we use the top 30 PCs: 
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- RunUMAP(pbmc_10x_v3, dims=1:30)
 ```
 
-Then, we can draw UMAP plot by using Dimplot() function by chosing reduction = 'umap'
+We draw the UMAP plot with the `Dimplot()` function by specifying the argument `reduction = 'umap'`:
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'Method')
@@ -251,91 +275,102 @@ DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'Method')
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'Experiment')
 ```
 
-## 2.6 Clustering
+## Clustering
 
-Seurat uses the Louvain algorithm for clustering by default. Louvain algorithm needs
-a neighbor gragh as input. So, we should run FindNeighbors() function first to get a
-neighbor graph in the Seurat obejcet. Also, the FindNeighbors() is depend on PCs as input.
-We all use top 30 PCs in our example case.
+By default, Seurat uses the Louvain algorithm. 
+
+The Louvain algorithm requires a neighbor graph as input. Therefore, we first run the `FindNeighbors()` function first. Note that `FindNeighbors()` is also based on PCs, here we use all 30 top PCs: 
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- FindNeighbors(pbmc_10x_v3, dims = 1:30)
 ```
 
-Then, we can run FindClusters() function to do clustering. 'Algorithm=1' means we 
-are now using Lovain algorithm for clustering. You can also select 'Algorithm=4' to use 
-Leiden algorithm for clustering, but you have to install Python and some Python packages first.
-You can also try different resolution for more or less clusters.
+
+We then run the `FindClusters()` function for clustering.
+
+Argument `Algorithm=1` means we are using the Louvain algorithm for clustering. 
+
+Other options are available such as `Algorithm=4` for the Leiden algorithm, but you have to install Python and some Python packages first. You can also try different resolution for more or less clusters. See `??FindClusters` for more details.
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- FindClusters(object = pbmc_10x_v3, resolution = 0.3, algorithm=1)
 ```
 
-We can also use UMAP to visualize our clustering result. group.by='seurat_clusters'
-means we want to use clustering result to colour data points (cells) in the UMAP.
+We can use UMAP to visualize the clustering results. The argument `group.by='seurat_clusters'`
+means that we want to color the cells according to the clustering results: 
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'seurat_clusters')
 ```
 
-## 2.7 Challenge 1: How to explain cluster 3 by using biological words?
+## Challenge 1: Characterising cluster 3 based on gene expression
 
-According to the UMAP, we found that cluster 3 is independent of other cells, indicating that cluster 3 has different characteristics from other cells. We tried to find the biological differences between cluster 3 and other cells and explain them in biological language.
+According to the UMAP representatoin above, we found that cluster 3 seems quite different from other cells and cell clusters. We can dig a bit further to characterise this cluster. 
 
-Therefore, first we looked for maker genes that were significantly differentially expressed in Cluster 3 compared with other clusters. We can first use FindAllMarkers() function to find marker genes for each cluster. It will take some time.
+
+First, we look for maker genes that were significantly differentially expressed in Cluster 3 compared with other clusters. We use the `FindAllMarkers()` function to identify marker genes for each cluster. 
+
+This command line takes some time to run: 
 
 ```{r, eval = TRUE}
 pbmc_10x_v3.markers <- FindAllMarkers(pbmc_10x_v3, min.pct = .25, logfc.threshold = .25)
 ```
 
-Then, we extract the top 5 marker of cluster 3 with lowers p-value.
+We then extract the top 5 marker of cluster 3 with the smallest p-values:
 
 ```{r, eval = TRUE}
 cluster3.markers <- pbmc_10x_v3.markers[which(pbmc_10x_v3.markers$cluster==3),]
 cluster3.markers[1:5, ]
 ```
 
-Then, we can search this marker genes in this marker gene database [website](https://panglaodb.se/search.html).
-We need to remove dash('-') before searching.
+We then search these marker genes in this database [website](https://panglaodb.se/search.html).
+We need to remove the dash ('-') before searching.
 
-Based on the result provided by the database, we believe cluster 3 is high likely the cluster of B cells.
+Based on the result provided by the database, it looks like cluster 3 might be a cluster of B cells. We can check whether this is the case by checking the cell-type `ground truth` information pre-saved in the `pbmc_10x_v3 object`.
 
-Let's check our answer (the cell-type information are pre-saved in the pbmc_10x_v3 object, 
-but in practice you don't know that).
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'CellType')
 ```
 
+
 Yes! We are correct! 
 
-You can try to annotate other clusters by yourself!
+You can try to annotate other clusters by yourself. The process of annotating each cluster using marker genes is also known as manual cell type annotation. We will try to do it automatically in the next section.
 
-The process of annotating each cluster using marker genes is also known as manual cell type annotation.
-We will try to do it automatically in Section 3.
+<p>
+<div class="info">
+**ⓘ  Ground-truth about cell-types*
+Typically, cell-type information is unknown in single cell data, as this is what we are trying to find out! But publicly available datasets may have been previously annotated using the technique higlighted above, or using other reference datasets.
+</div>
+</p>
 
-## 2.8 Bonus: visulize marker genes
 
-We can use violin plot to visualize one marker genes across all cell-type.
 
-Firstly, let's have a look the most significant marker genes of Cluster 4.
+
+## Visualize marker genes
+
+We can use violin plots to visualize the expression of one marker genes across all cell types.
+
+For example, we choose the most significant marker genes from Cluster 4.
 
 ```{r, eval = TRUE}
 cluster4.markers <- pbmc_10x_v3.markers[which(pbmc_10x_v3.markers$cluster==4),]
 cluster4.markers[1:5, ]
 ```
 
-The most significant marker gene of Cluster 4 is VCAN. Then, we can visulize it by using violin plot.
+The most significant marker gene of Cluster 4 is VCAN. 
 
-If we want to visulize marker genes across all cell type, we should use Idents() function to identify we wants to
-use 'CellType' as a-axis. Then, we use VlnPlot() function to draw the violin plot.
+If we want to visualize a marker gene across all cell types, we can use the `Idents()` function, specifying that `CellType` should be shown on the x-axios before using the `VlnPlot()` function to draw the violin plot:
 
 ```{r, eval = TRUE}
 Idents(object = pbmc_10x_v3) <- "CellType"
 VlnPlot(pbmc_10x_v3, features = 'VCAN')
 ```
 
-# 3. Automatical cell type annotation for pbmc_10x_v2
+**Exercise:** What is the interpretation of this output?
+
+# 3. Automatic cell type annotation for pbmc_10x_v2
 
 ## 3.1 Introduction
 
