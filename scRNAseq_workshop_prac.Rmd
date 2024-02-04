@@ -370,21 +370,15 @@ VlnPlot(pbmc_10x_v3, features = 'VCAN')
 
 **Exercise:** What is the interpretation of this output?
 
-# 3. Automatic cell type annotation for pbmc_10x_v2
+# 3. Automatic cell type annotation for `pbmc_10x_v2`
 
-## 3.1 Introduction
+Assume we have all cell type annotation for  `pbmc_10x_v3` and that we have a new set of data (stored in `pbmc_10x_v2` that we wish to annotate automatically.
 
-We now have all cell type annotation of pbmc_10x_v3 object. Imagine we know have a new batch of data:
-pbmc_10x_v2. How can we automatically annotate cell type for it?
+*Remember*: `pbmc_10x_v2` and `pbmc_10x_v3` include different cells from different patients and sequenced using platforms.
 
-*Remember: pbmc_10x_v2 and pbmc_10x_v3 used different sequencing platform and sequence sample different patient.*
+## Exercise: pre-processing and visualization for `pbmc_10x_v2`
 
-## 3.2 Practice: pre-processing and visulization for pbmc_10x_v2
-
-In Section 2, we learned how to use Seurat to do 
-pre-processing (Normalization, Feature Selection, Scaling, PCA) and visualization (t-SNE and UMAP).
-
-Would you please help me do pre-processing and draw a UMAP for pbmc_10x_v2 object?
+*Exercise*: use the functions presented in Section 2 to normalise, select highly variable genes, scale, run a PCA and visualize the data using UMAP. 
 
 Answer:
 
@@ -409,47 +403,46 @@ DimPlot(pbmc_10x_v2, reduction = "umap", label = TRUE, group.by = 'Method')
 DimPlot(pbmc_10x_v2, reduction = "umap", label = TRUE, group.by = 'Experiment')
 ```
 
-## 3.3 Cell-type annotation with Seurat by using pbmc_10x_v3 as a reference
+## Cell-type annotation with Seurat based on `pbmc_10x_v3` as a reference
 
-Seurat can learn cell type annotation results from one scRNA-seq data
-and then provide cell type annotations for another scRNA-seq data. First, we use 
-FindTransferAnchors() function to predict which cells in two datasets are of the same cell type.
-Remember, we have cell type annotaion for pbmc_10x_vs and we want cell type annotation
-for pbmc_10x_v2. So, pbmc_10x_v3 is the reference data set and pbmc_10x_v2 is the query data
-set. Also, we use top 30 PCs for this analysis.
+In Seurat we can learn cell type annotation results from one scRNA-seq data to provide cell type annotation for another scRNA-seq dataset. 
+
+We use the `FindTransferAnchors()` function to predict which cells in two datasets are of the same cell type. Here we use `pbmc_10x_v3` as the reference data set, and `pbmc_10x_v2` is the query data.
+
+We specify that we use the top 30 PCs:
 
 ```{r, eval = TRUE}
 anchors <- FindTransferAnchors(reference = pbmc_10x_v3, query = pbmc_10x_v2, 
                                dims = 1:30)
 ```
 
-Then, we can give cells from pbmc_10x_v2 data set a cell-type annotation by using
-the annotation from pbmc_10x_v3 data set.
+
+We then assign the cell-type of the cells in `pbmc_10x_v2` using the `TransferData()` function:
 
 ```{r, eval = TRUE}
 predictions <- TransferData(anchorset = anchors, refdata = pbmc_10x_v3$CellType, 
                                  dims = 1:30)
 ```
 
-Seurat will provide a table with most likely cell type and the probability of each 
-cell type. We can add the most likely cell type to pbmc_10x_v2 object.
+Seurat will provide a table with the most likely cell type and the probability of each 
+cell type. We assign the most likely cell type to the `pbmc_10x_v2` object:
 
 ```{r, eval = TRUE}
 pbmc_10x_v2@meta.data$CellType_Prediction <- predictions$predicted.id 
 ```
 
-We can also use UMAP to visualize the automatic cell type annotation result.
+We then use UMAP to visualize this annotation: 
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v2, reduction = "umap", label = TRUE, group.by = 'CellType_Prediction')
 ```
 
-## 3.3 Cell-type annotation by using Azimuth (a website tool)
+## Alternative: Cell-type annotation using Azimuth (a website tool)
 
 Azimuth is a web application that uses an annotated reference dataset to automate 
 the processing, analysis, and interpretation of a new single-cell RNA-seq or ATAC-seq experiment.
 
-The input of Azimuth can be a Seurat object. In order to reduce the size of the uploaded file (retain the information useful for cell type annotation only), we first need to perform some operations on the pbmc_10x_v2 object.
+The input of Azimuth can be a Seurat object. In order to reduce the size of the uploaded file, we retain only the  useful information for cell type annotation with the following command lines: 
 
 ```{r, eval = TRUE}
 DefaultAssay(pbmc_10x_v2) <- "RNA"
@@ -457,13 +450,13 @@ pbmc_10x_v2_simple <- DietSeurat(object = pbmc_10x_v2, assays = "RNA")
 saveRDS(pbmc_10x_v2_simple, 'pbmc_10x_v2.Rds')
 ```
 
-An Rds file called pbmc_10x_v2.Rds is saved at you working directory. You can check
-your working directory by using gerwd() function.
+An Rds file called `pbmc_10x_v2.Rds` is saved in your working directory. You can check where is your working directory by using the `getwd()` function.
 
-Then you can open Azimuth [website](https://azimuth.hubmapconsortium.org/):
+*Exercise*
+ Open the Azimuth [website](https://azimuth.hubmapconsortium.org/):
 https://azimuth.hubmapconsortium.org/.
 
-How to use Azimuth to do cell type annotation (We also have some slides):
+To do cell type annotation (see also the slides): 
 
 1. Find 'References for scRNA-seq Queries' -> Then find 'Human - PBMC' -> click 'Go to App'
 
@@ -473,52 +466,50 @@ How to use Azimuth to do cell type annotation (We also have some slides):
 
 4. Click 'Map cells to reference'
 
-5. Click 'Downloads Results'
+5. Click 'Download Results'
 
 6. Find 'Predicted cell types and scores (TSV)'
 
-7. Click 'Downlaod' to get the cell type annotation result: azimuth_pred.tsv
+7. Click 'Download' to get the cell type annotation result stored in azimuth_pred.tsv
 
 8. Copy the tsv file (azimuth_pred.tsv) to your R working directory
 
 The tsv file has the same data structure of Seurat annotation result (predictions).
-We can read the tsv file, then add the annotation result to the pbmc_10x_v2 object 
-by using AddMetaData() function.
+We read the tsv file, then add the annotation result to the `pbmc_10x_v2` object 
+with the `AddMetaData()` function:
 
 ```{r, eval = TRUE}
 azimuth_predictions <- read.delim('azimuth_pred.tsv', row.names = 1)
 pbmc_10x_v2 <- AddMetaData(object = pbmc_10x_v2, metadata = azimuth_predictions)
 ```
 
-We can also use UMAP to visualize the cell type annotation result by using Azimuth.
+We use UMAP to visualize the cell type annotation result from Azimuth.
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v2, reduction = "umap", label = TRUE, group.by = 'predicted.celltype.l2')
 ```
 
-## 3.4 Disscusion
+## Comparing annotations
 
-Here is the cell type annotation results provided by the data provider.
+Here is the cell type annotation results provided by the data provider:
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v2, reduction = "umap", label = TRUE, group.by = 'CellType')
 ```
 
-Which cell type annotation is better among the results from Section 3.2 and the results from section 3.3? Why? 
+*Exercise* 
+Assuming the ground truth of the cell type annotation is from the provider, which cell type annotation is better from Seurat or Azymuth? Why? 
 
-What do you think makes one outcome better?
 
-# 4. Intergrate two data sets
+# 4. Integration of two data sets
 
-##  4.1 Before analyzing data
+We have combined the two data sets without any processing in the Seurat object `pbmc_combo`. In this section we will introduce how we can combine these data sets (note: the process would be similar if you are combining different patients).
 
-At the begining of the practical session, we combined the two sequencing 
-results without any processing and stored them in the Seurat object ‘pbmc_combo’.
-Can we analyzing pbmc_combo like we analyze the scRNA-seq data from only one experiment?
+## Challenge 2: Why can't we analyze `pbmc_combo` directly?
 
-## 4.2 Challenge 2: Why can't we analyze pbmc_combo directly?
 
-Try analyzing pbmc_combo like analyzing one scRNA-seq experiment data to see what problems will arise?
+*Exercise*: use the functions presented in Section 2 to normalise, select highly variable genes, scale, run a PCA and visualize the data using UMAP on `pbmc_combo`. Highlight the issues in this basic analysis where we are combining two independent data sets. 
+
 
 ```{r, eval = TRUE}
 # Normalize it
@@ -550,29 +541,27 @@ VlnPlot(pbmc_combo, features = 'CD14')
 
 ```
 
-You can see that differences from sequencing platforms and data sources emerge as the major differences. This interferes us to detect valuable biological differences. We call differences caused by non-biological factors such as sequencing platforms or data sources batch effects. We need to first use some statistical methods to remove batch effects before we conduct downstream analysis to eliminate the interference of non-biological factors.
+[should be in answer] 
+We observe that the differences from sequencing platforms and data sources emerge as a major source of variation in the combine data. This hinders our ability to detect valuable biological signal. We call differences caused by non-biological factors such as sequencing platforms or data sources batch effects. We need to first use some statistical methods to remove batch effects prior to downstream analysis. 
 
-## 4.3 Solution: Intergrate multiple scRNA-seq data sets
+## Removing batch effects
 
-We can also use Seurat to remove batch effect then integrate multiple data sets.
-
-Firstly, we use FindIntegrationAnchors() function to find cells with similar biological information
-between two data sets. Then, the difference between cells in two data sets with similar biological information
-is considered as batch effect.
+In Seurat, we use the `FindIntegrationAnchors()` function to identify cells with similar biological information
+between two data sets. The difference between cells in two data sets with similar biological information
+is considered as batch effect:
 
 ```{r, eval = TRUE}
 anchor_combo <- FindIntegrationAnchors(object.list = list(pbmc_10x_v2, pbmc_10x_v3), dims = 1:30)
 ```
 
-Then, we can use IntegrateData() function to remove batch effect and integrate two data sets.
+We then use the `IntegrateData()` function to remove batch effects and integrate the two data sets:
 
 ```{r, eval = TRUE}
 pbmc_combo <- IntegrateData(anchorset = anchor_combo, dims = 1:30)
 ```
 
-We can then visualize the integrated scRNA-seq data by using UMAP.
 
-We need scaling data first for PCA. Then, Run PCA for UMAP.
+*Exercise*: Visualise the batch corrected data using UMAP (you will need to scale the data first). What do you observe?  
 
 ```{r, eval = TRUE}
 # Scaling
@@ -590,4 +579,3 @@ DimPlot(pbmc_combo, reduction = "umap", label = TRUE, group.by = 'Experiment')
 DimPlot(pbmc_combo, reduction = "umap", label = TRUE, group.by = 'CellType')
 ```
 
-What are the difference between before and after batch effect removal?
