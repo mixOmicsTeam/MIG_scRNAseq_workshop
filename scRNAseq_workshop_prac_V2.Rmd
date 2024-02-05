@@ -1,6 +1,6 @@
 ---
-title: "Introduction to single-cell RNA-seq analysis by using Seurat"
-author: "Xiaochen Zhang, Jiadong Mao, Kim-Anh Lê Cao, Saritha Kodikara"
+title: "Introduction to single-cell RNA-seq analysis using Seurat"
+author: "Xiaochen Zhang, Kim-Anh Lê Cao"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
   html_document:
@@ -54,8 +54,9 @@ div .info {
 options(width=80)
 ```
 
-# About Seurat and SeuratData
+# Packages
 
+## Seurat
 Seurat is an R package designed for QC, analysis, and exploration of single-cell 
 RNA-seq data. Seurat aims to enable users to identify and interpret sources of 
 heterogeneity from single-cell transcriptomic measurements, and to integrate 
@@ -63,12 +64,13 @@ types of single-cell data. After this short introduction workshop you can
 read [Seurat offical website](https://satijalab.org/seurat/) to dive a
 bit deeper.
 
+##  SeuratData
 `SeuratData` is a mechanism for distributing datasets in the form of Seurat 
 objects using R's internal package and data management systems. 
 It represents an easy way for users to get access to datasets 
 that are used in the Seurat vignettes.
 
-## Install Seurat and SeuratData 
+## Installation 
 (If you have installed them before workshop, you do not need to run this block of code.)
 
 ```{r, eval = FALSE}
@@ -81,7 +83,7 @@ if (!requireNamespace("remotes", quietly = TRUE)) {
 remotes::install_github("satijalab/seurat-data", quiet = TRUE)
 ```
 
-# 1. Load Seurat and SeuratData
+# 1. Load the packages
 
 We will use Seurat V5, which was published last year. Seurat V5 has gradually 
 gained popularity due to its faster running speed. However, Seurat V5 has some 
@@ -99,10 +101,12 @@ We will use the `pbmcsca` dataset. This public dataset includes single-cell RNA-
 data of human peripheral blood mononuclear cells (PBMCs) using multiple sequencing platforms.
 Only data that *passed quality control* are included in the `pbmcsca` dataset.
 
-```{r, eval = TRUE, message=FALSE}
+```{r, eval = TRUE, message=FALSE, warning=FALSE}
 data("pbmcsca")
 pbmcsca <- UpdateSeuratObject(pbmcsca)
 ```
+
+(You can ignore the warning message).
 
 ```{r, eval = TRUE}
 table(pbmcsca$Method)
@@ -110,7 +114,7 @@ table(pbmcsca$Method)
 
 The table indicates the number of cells sequenced using different platforms.
 
-Today we will consider two scRNA-seq sequencing results (10x Chromium (v2) & 10x Chromium (v3)). PBMCs were sequnced from two patients using different versions of the sequencing platform.
+In this workshop, we will consider two scRNA-seq data sets generated from two platforms, 10x Chromium (v2) & 10x Chromium (v3). PBMCs were sequenced from two patients. 
 
 ## Extract raw counts
 The raw count matrix and the information of each gene and each cell are saved in a Seurat object
@@ -128,9 +132,10 @@ pbmc_combo <- pbmcsca[,pbmcsca$Method %in% c("10x Chromium (v2)", "10x Chromium 
 The Seurat object is a representation of single-cell expression data for R; each Seurat object revolves 
 around a set of cells and consists of one or more Assay objects, or individual representations of expression 
 data (eg. RNA-seq, ATAC-seq, etc). These assays can be reduced from their high-dimensional state to 
-a lower-dimension state and stored as DimReduc objects. 
+a lower-dimension state and stored as `DimReduc` objects. 
+
 Seurat objects also store additional metadata, both at the cell and feature level 
-(contained within individual assays). The object was designed to be as self-contained 
+(stored within individual assays). The object is designed to be as self-contained 
 as possible, and easily extendable to new methods.
 
 We use Seurat object `pbmc_10x_v3` as an example.
@@ -143,7 +148,7 @@ pbmc_10x_v3@assays$RNA
 
 <p>
 <div class="info">
-**ⓘ Count matrix in Seurat*  
+**ⓘ Count matrix in Seurat** 
 A count matrix from a Seurat object displays the genes in rows and the cells in columns. 
 </div>
 </p>
@@ -154,7 +159,7 @@ The information and labels of each cell is here:
 pbmc_10x_v3@meta.data
 ```
 
-And the dimensional reduction information will be saved here:
+The dimension reduction information is stored here:
 
 ```{r, eval = FALSE}
 pbmc_10x_v3@reductions
@@ -168,7 +173,7 @@ Let's first take a look at how many cells and genes passed Quality Control (QC).
 
 <p>
 <div class="info">
-**ⓘ Count matrix in Seurat*  
+**ⓘ Count matrix in Seurat** 
 A count matrix from a Seurat object displays the genes in rows and the cells in columns. 
 </div>
 </p>
@@ -177,7 +182,7 @@ A count matrix from a Seurat object displays the genes in rows and the cells in 
 dim(pbmc_10x_v3)
 ```
 
-Here we have 3222 cells with 33694 genes that passed QC.
+Here we have 3,222 cells with 33,694 genes that passed QC.
 
 ## Normalization
 
@@ -223,21 +228,21 @@ pbmc_10x_v3 <- ScaleData(pbmc_10x_v3, features = pbmc_10x_v3.all.genes)
 
 We perform PCA on the scaled data. By default, the genes in `pbmc_10x_v3@var.genes` are used as input, but they can be defined by specifying the argument `pc.genes`. 
 
-We have found that running dimensionality reduction on highly variable genes can improve performance. However, with UMI data – particularly after regressing out technical variables, we often see that PCA returns similar (albeit slower) results when run on much larger subsets of genes, including the whole transcriptome.
+Performing dimensionality reduction on highly variable genes can improve performance. However, with UMI data – particularly after regressing out technical variables, we often see that PCA returns similar (albeit slower) results when run on much larger subsets of genes, including the whole transcriptome.
 
 We run PCA on top 3,000 most variable genes:
-
-(The PCA result will be stored in the `pbmc_10x_v3@reduction`. The output information 
-will tell you which genes have high correlation (also positive or negative) 
-with top 5 principal components)
 
 ```{r, eval = TRUE}
 pbmc_10x_v3 <- RunPCA(pbmc_10x_v3, features = VariableFeatures(object = pbmc_10x_v3))
 ```
 
+
+The PCA result is stored in `pbmc_10x_v3@reduction`. The output information 
+tells us which genes are positively, or negatvely correlated with the top 5 principal components.
+
 <p>
 <div class="info">
-**ⓘ  Choosing parameters in PCA (genes and pcs)*  
+**ⓘ  Choosing parameters in PCA (genes and pcs)** 
 How many genes to choose for PCA and how many PCs to use for downstream analysis 
 is a complex and important issue that is out of the scope of today's workshop. 
 
@@ -273,9 +278,10 @@ For example, to display the sequencing platform:
 DimPlot(pbmc_10x_v3, reduction = "tsne", label = TRUE, group.by = 'Method')
 ```
 
-You can see all cells in pbmc_10x_v3 data are sequenced by using 10x Chromium(v3) platform.
+Here we have cells sequenced with only one sequencing platform (10x Chromium v3).
 
-You can try other numbers of PCs and see what changes?
+**Exercise:** Plot different tSNE with a different number of PCs. Do you observe any changes? 
+
 
 ```{r, eval = TRUE, message=FALSE}
 pbmc_10x_v3 <- RunTSNE(pbmc_10x_v3, dims = 1:50)
@@ -285,7 +291,7 @@ DimPlot(pbmc_10x_v3, reduction = "tsne", label = TRUE, group.by = 'Experiment')
 
 <p>
 <div class="info">
-*ⓘ  Interpreting t-SNE results *
+*ⓘ  Interpreting t-SNE results **
 As presented earlier, t-SNE interpretation must be taken with [caution](https://pair-code.github.io/understanding-umap/#:~:text=The%20biggest%20difference%20between%20the,meaningful%20than%20in%20t%2DSNE). 
 Nowadays using UMAP visulization is more appropriate.
 </div>
@@ -294,21 +300,26 @@ Nowadays using UMAP visulization is more appropriate.
 
 ### Using Uniform manifold approximation and project (UMAP)
 
-UMAP is shown based on the PCs. Here we use the top 30 PCs: 
+UMAP is also based on PCs. Here we use the top 30 PCs: 
 
 ```{r, eval = TRUE, message=FALSE, warning=FALSE}
 pbmc_10x_v3 <- RunUMAP(pbmc_10x_v3, dims=1:30)
 ```
 
-We draw the UMAP plot with the `Dimplot()` function by specifying the argument `reduction = 'umap'`:
+We draw the UMAP plot with the `Dimplot()` function by specifying the argument `reduction = 'umap'`. We can specify the argument `group.by` to color the cells according to platform or experiment name.
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'Method')
 ```
 
-```{r, eval = TRUE}
+```{r, eval = FALSE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'Experiment')
 ```
+
+
+**Exercise:** Plot different UMAP with a different number of PCs. Do you observe any changes? 
+
+
 
 ## Clustering
 
@@ -321,35 +332,39 @@ pbmc_10x_v3 <- FindNeighbors(pbmc_10x_v3, dims = 1:30)
 ```
 
 
-We then run the `FindClusters()` function for clustering.
+We then run the `FindClusters()` function for clustering. The argument `Algorithm=1` means we are using the Louvain algorithm for clustering: 
 
-Argument `Algorithm=1` means we are using the Louvain algorithm for clustering. 
-
-Other options are available such as `Algorithm=4` for the Leiden algorithm, but you have to install Python and some Python packages first. You can also try different resolution for more or less clusters. See `??FindClusters` for more details.
 
 ```{r, eval = TRUE, message=FALSE}
 pbmc_10x_v3 <- FindClusters(object = pbmc_10x_v3, resolution = 0.3, algorithm=1)
 ```
 
+
+Other options are available such as `Algorithm=4` for the Leiden algorithm, but you have to install Python and some Python packages first. You can also try different resolution for more or less clusters. See `??FindClusters` for more details.
+
 We can use t-SNE and UMAP to visualize the clustering results. The argument `group.by='seurat_clusters'`
-means that we want to color the cells according to the clustering results: 
+is used to color the cells according to the clustering results.
+
+tSNE visualisation:
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "tsne", label = TRUE, group.by = 'seurat_clusters')
 ```
 
+UMAP visualisation: 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'seurat_clusters')
 ```
 
-*Discussion:* Which do you think is better between t-SNE and UMAP visualization results? Why?
+**Discussion:** Which visualization is better, and why? 
+
+
 
 ## Challenge 1: Characterising cluster 3 based on gene expression
 
-According to the UMAP representation above, we found that cluster 3 seems quite different from other cells and cell clusters. We can dig a bit further to characterize this cluster. 
+According to the UMAP representation above, it seems that cluster is different from the other cells and cell clusters. Let's dig a bit further to characterize this cluster. 
 
-
-First, we look for maker genes that were significantly differential expressed in Cluster 3 compared with other clusters. We use the `FindAllMarkers()` function to identify marker genes for each cluster. 
+First, we look for marker genes that were significantly differential expressed in Cluster 3 compared with other clusters. We use the `FindAllMarkers()` function to identify marker genes for each cluster. 
 
 This command line takes some time to run: 
 
@@ -367,26 +382,14 @@ cluster3.markers[1:5, ]
 We then search these marker genes in this database [website](https://panglaodb.se/search.html) https://panglaodb.se/search.html.
 We need to remove the dash ('-') before searching.
 
-Based on the result provided by the database, it looks like cluster 3 might be a cluster of B cells. We can check whether this is the case by checking the cell-type `ground truth` information pre-saved in the `pbmc_10x_v3 object`.
-
-<button onclick="myFunction(&#39;q45&#39;)">
-
-Show solutions
-
-</button>
-
-::: {#q45 style="display:none"}
-
+Based on the result provided by the database, it looks like cluster 3 might be a cluster of B cells. We can check whether this is the case by checking the cell-type `ground truth` information pre-saved in the `pbmc_10x_v3 object`, and plotting this into a tSNE:
 
 ```{r, eval = TRUE}
 DimPlot(pbmc_10x_v3, reduction = "umap", label = TRUE, group.by = 'CellType')
 ```
 
-Yes! We are correct! 
+Yes, we are correct, cluster 3 is annotated as B cells.
 
-:::
-
-<!-- end solutions -->
 
 <p>
 
@@ -394,13 +397,13 @@ You can try to annotate other clusters by yourself. The process of annotating ea
 
 <p>
 <div class="info">
-**ⓘ  Ground-truth about cell-types*
+**ⓘ  Ground-truth about cell-types**
 Typically, cell-type information is unknown in single cell data, as this is what we are trying to find out! But publicly available datasets may have been previously annotated using the technique higlighted above, or using other reference datasets.
 </div>
 </p>
 
 
-## Visualize marker genes
+### Visualize marker genes
 
 We can use violin plots to visualize the expression of one marker genes across all cell types.
 
@@ -428,9 +431,9 @@ Assume we have all cell type annotation for  `pbmc_10x_v3` and that we have a ne
 
 *Remember*: `pbmc_10x_v2` and `pbmc_10x_v3` include different cells from different patients and sequenced using platforms.
 
-## Exercise: pre-processing and visualization for `pbmc_10x_v2`
+## Pre-processing and visualization for `pbmc_10x_v2`
 
-*Exercise*: use the functions presented in Section 2 to normalise, select highly variable genes, scale, run a PCA and visualize the data using UMAP. 
+**Exercise**: use the functions presented in Section 2 to normalise, select highly variable genes, scale, run a PCA and visualize the data using UMAP. 
 
 
 <button onclick="myFunction(&#39;q2&#39;)">
@@ -466,7 +469,9 @@ DimPlot(pbmc_10x_v2, reduction = "umap", label = TRUE, group.by = 'Experiment')
 
 <!-- end solutions -->
 
-## Cell-type annotation with Seurat based on `pbmc_10x_v3` as a reference
+## Cell-type annotation
+
+### Based on `pbmc_10x_v3` as a reference using Seurat
 
 In Seurat we can learn cell type annotation results from one scRNA-seq data to provide cell type annotation for another scRNA-seq dataset. 
 
@@ -500,7 +505,7 @@ We then use UMAP to visualize this annotation:
 DimPlot(pbmc_10x_v2, reduction = "umap", label = FALSE, group.by = 'CellType_Prediction')
 ```
 
-## Alternative: Cell-type annotation using Azimuth (a website tool)
+## Using Azimuth (a website tool)
 
 Azimuth is a web application that uses an annotated reference dataset to automate 
 the processing, analysis, and interpretation of a new single-cell RNA-seq or ATAC-seq experiment.
@@ -515,11 +520,11 @@ saveRDS(pbmc_10x_v2_simple, 'pbmc_10x_v2.Rds')
 
 An Rds file called `pbmc_10x_v2.Rds` is saved in your working directory. You can check where is your working directory by using the `getwd()` function.
 
-*Exercise*
+**Exercise**
  Open the Azimuth [website](https://azimuth.hubmapconsortium.org/):
 https://azimuth.hubmapconsortium.org/.
 
-To do cell type annotation (see also the slides 
+For cell type annotation (see also the slides 
 [here](https://github.com/ShiltonZhang/MIG_scRNAseq_workshop/tree/main)): 
 
 1. Find 'References for scRNA-seq Queries' -> Then find 'Human - PBMC' -> click 'Go to App'
@@ -561,24 +566,21 @@ Here is the cell type annotation results provided by the data provider:
 DimPlot(pbmc_10x_v2, reduction = "umap", label = FALSE, group.by = 'CellType')
 ```
 
-*Exercise* 
+**Exercise** 
 Assuming the ground truth of the cell type annotation is from the provider, which cell type annotation is better from Seurat or Azimuth? Why?
 
 Solution:
 
-The annotation provided by the Azimuth is better.
-
-Because Azimuth uses a larger reference data set, it can better learn the characteristics 
-of each cell type to obtain more accurate cell type annotations.
+The annotation provided by the Azimuth is better as Azimuth uses a larger reference data set. This means that Azymuth can learn the characteristics of each cell type to obtain accurate cell type annotations.
 
 
 # 4. Integration of two data sets
 
-We have combined the two data sets without any processing in the Seurat object `pbmc_combo`. In this section we will introduce how we can combine these data sets (note: the process would be similar if you are combining different patients).
+We have combined the two data sets without any processing in the Seurat object `pbmc_combo`. In this section we will focus on combining these data sets (note: the process would be similar if you are combining different patients).
 
 ## Challenge 2: Why can't we analyze `pbmc_combo` directly?
 
-*Exercise*: use the functions presented in Section 2 to normalise, select highly variable genes, scale, run a PCA and visualize the data using UMAP on `pbmc_combo`. Highlight the issues in this basic analysis where we are combining two independent data sets.
+**Exercise**: use the functions presented in Section 2 to normalise, select highly variable genes, scale, run a PCA and visualize the data using UMAP on `pbmc_combo`. Highlight the issues in this basic analysis where we are combining two independent data sets.
 
 <button onclick="myFunction(&#39;q4&#39;)">
 
@@ -640,7 +642,7 @@ pbmc_combo <- IntegrateData(anchorset = anchor_combo, dims = 1:30)
 ```
 
 
-*Exercise*: Here is the code visualizing the batch corrected data using UMAP (need to scale the data first). What do you observe?  
+**Exercise**: Below is the code to visualize the batch corrected data using UMAP (we need to scale the data first). What do you observe?  
 
 ```{r, eval = TRUE, message=FALSE}
 # Scaling
